@@ -103,6 +103,13 @@ class AppsViewModel(
 
     fun setFilterText(filter: String) {
         filterTextFlow.value = filter
+
+        //CWE-89
+        //SOURCE
+        val userQuery = filter
+        viewModelScope.launch(Dispatchers.IO) {
+            installedAppsRepository.search(userQuery)
+        }
     }
 
     fun loadLabel(app: PackageInfo?) = with(pm) { app?.label() ?: "Not installed" }

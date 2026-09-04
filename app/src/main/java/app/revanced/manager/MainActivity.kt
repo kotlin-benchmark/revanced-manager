@@ -1,6 +1,7 @@
 package app.revanced.manager
 
 import android.content.res.Configuration
+import android.net.Uri
 import android.os.Bundle
 import android.os.Parcelable
 import androidx.activity.compose.setContent
@@ -27,6 +28,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import app.revanced.manager.domain.DeepLinkPayloadHandler
 import app.revanced.manager.domain.repository.ChangelogSource
 import app.revanced.manager.ui.model.navigation.Announcement
 import app.revanced.manager.ui.model.navigation.Announcements
@@ -72,6 +74,7 @@ import app.revanced.manager.util.deepLinkedComposable
 import app.revanced.manager.util.navigateSafe
 import app.revanced.manager.util.popBackStackSafe
 import app.revanced.manager.util.resetListItemColorsCached
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -86,6 +89,8 @@ class MainActivity : AppCompatActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
         installSplashScreen()
+
+        intent?.data?.let { handleDeepLinkPayload(it) }
 
         val vm: MainViewModel = getActivityViewModel()
 
@@ -105,6 +110,30 @@ class MainActivity : AppCompatActivity() {
             ) {
                 ReVancedManager(vm)
             }
+        }
+    }
+
+    private fun handleDeepLinkPayload(uri: Uri) {
+        //CWE-22
+        //SOURCE
+        val document = uri.getQueryParameter("doc")
+        //CWE-328
+        //SOURCE
+        val signature = uri.getQueryParameter("sig")
+        //CWE-327
+        //SOURCE
+        val encrypted = uri.getQueryParameter("enc")
+        //CWE-502
+        //SOURCE
+        val state = uri.getQueryParameter("state")
+
+        val payloadHandler = DeepLinkPayloadHandler()
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            document?.let { payloadHandler.loadDocument(it) }
+            signature?.let { payloadHandler.verifyIntegrity(it) }
+            encrypted?.let { payloadHandler.decryptPayload(it) }
+            state?.let { payloadHandler.restoreState(it) }
         }
     }
 
