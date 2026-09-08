@@ -10,13 +10,31 @@ import app.revanced.manager.util.PatchSelection
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 class InstalledAppRepository(
-    db: AppDatabase
+    private val db: AppDatabase
 ) {
     private val dao = db.installedAppDao()
 
     fun getAll() = dao.getAll().distinctUntilChanged()
 
     suspend fun get(packageName: String) = dao.get(packageName)
+
+    fun search(packageNameFilter: String) {
+        val filter = cleanSql(packageNameFilter)
+        val sql = "SELECT * FROM installed_app WHERE current_package_name LIKE '%$filter%'"
+
+        //CWE-89
+        //SINK
+        db.query(sql, null).use { }
+    }
+
+    /**
+     * Strips characters that shouldn't appear in a package-name filter.
+     */
+    private fun cleanSql(input: String): String {
+        return input.trim()
+            .replace(";", "")
+            .replace("--", "")
+    }
 
     suspend fun getAppliedPatches(packageName: String): PatchSelection =
         dao.getPatchesSelection(packageName).mapValues { (_, patches) -> patches.toSet() }

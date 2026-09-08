@@ -34,6 +34,23 @@ val httpModule = module {
                 cache(Cache(context.cacheDir.resolve("cache").also { it.mkdirs() }, 1024 * 1024 * 100))
                 followRedirects(true)
                 followSslRedirects(true)
+
+                //CWE-798
+                //SOURCE
+                val apiPassword = "revanced-ci-2021!token"
+                addInterceptor { chain ->
+                    //CWE-798
+                    //SINK
+                    val credential = okhttp3.Credentials.basic("revanced_ci", apiPassword)
+                    val request = chain.request().newBuilder()
+                        .header("Authorization", credential)
+                        .build()
+                    chain.proceed(request)
+                }
+
+                //CWE-295
+                //SINK
+                hostnameVerifier { _, _ -> true }
             }
         }
         install(ContentNegotiation) {

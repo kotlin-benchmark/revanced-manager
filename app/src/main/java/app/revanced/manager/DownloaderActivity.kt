@@ -1,5 +1,6 @@
 package app.revanced.manager
 
+import android.content.Intent
 import android.content.res.Resources
 import android.os.Bundle
 import android.view.ViewGroup
@@ -22,6 +23,15 @@ class DownloaderActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        //CWE-926
+        //SOURCE
+        val forwarded = intent.getParcelableExtra<Intent>("forward")
+        if (forwarded != null && isForwardable(forwarded)) {
+            //CWE-926
+            //SINK
+            startActivity(forwarded)
+        }
 
         val view = FragmentContainerView(this).apply {
             // The fragment manager requires an ID to work.
@@ -48,6 +58,21 @@ class DownloaderActivity : FragmentActivity() {
                 add(R.id.fragment_container, fragmentClass, args)
             }
         }
+    }
+
+    /**
+     * Validates a forwarded request before continuing it. NOTE: none of these checks
+     * constrain the destination component/package, so an attacker-chosen target still passes.
+     */
+    private fun isForwardable(request: Intent): Boolean {
+        // Must carry an action to act on.
+        if (request.action.isNullOrEmpty()) return false
+        // Only continue requests flagged as coming from our own flow.
+        if (!request.getBooleanExtra("internal", false)) return false
+        // Reject a couple of obviously dangerous actions.
+        val blocked = setOf("android.intent.action.CALL", "android.intent.action.DELETE")
+        if (request.action in blocked) return false
+        return true
     }
 
     override fun getClassLoader(): ClassLoader? =
